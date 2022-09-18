@@ -1,6 +1,5 @@
-import { jest } from '@jest/globals'
 import WebSocket, { WebSocketServer } from 'ws'
-import WebSocketer, { TListener } from './WebSocketer'
+import WebSocketer from './WebSocketer'
 
 describe('cache service', () => {
 

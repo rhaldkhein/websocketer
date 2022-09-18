@@ -1,22 +1,22 @@
 import { nanoid } from 'nanoid'
 
-export type TPayload = any
+export type Payload = any
 
-export type TReply = (
-  payload?: TPayload,
+export type Reply = (
+  payload?: Payload,
   error?: WebSocketerError) => void
 
-export type TListener<T = TPayload> = (
+export type Listener<T = Payload> = (
   payload: T,
-  replay: TReply,
-  request: IRequest) => void
+  replay: Reply,
+  request: RequestData) => void
 
-export type TResponseHandler = (
+export type ResponseHandler = (
   error: WebSocketerError | null,
-  payload: TPayload,
-  request: IRequest) => void
+  payload: Payload,
+  request: RequestData) => void
 
-export interface IRequest<T = any> {
+export interface RequestData<T = any> {
   /** namespace */
   ns: string
   /** id */
@@ -30,14 +30,14 @@ export interface IRequest<T = any> {
   /** payload */
   pl?: T
   /** response - `true` on server, `function` on client to call when replied */
-  rs?: true | TResponseHandler
+  rs?: true | ResponseHandler
   /** timeout id */
   ti?: any
   /** local data space */
   locals?: Record<string, any>
 }
 
-export interface IOptions {
+export interface Options {
   namespace: string
   timeout: number
   errorFilter: (err: WebSocketerError) => WebSocketerError
@@ -53,10 +53,10 @@ export class WebSocketerError extends Error {
 
 export default class WebSocketer {
 
-  private _options: IOptions
+  private _options: Options
   private _socket: any
-  private _requests = new Map<string, IRequest>()
-  private _listeners = new Map<string, TListener[]>()
+  private _requests = new Map<string, RequestData>()
+  private _listeners = new Map<string, Listener[]>()
   private _messageHandler: (e: any) => Promise<void>
 
   /**
@@ -69,7 +69,7 @@ export default class WebSocketer {
    */
   constructor(
     socket: any,
-    options?: Partial<IOptions>) {
+    options?: Partial<Options>) {
 
     options = options || {}
     options.errorFilter = options.errorFilter || (err => err)
@@ -77,10 +77,10 @@ export default class WebSocketer {
     options.timeout = options.timeout || 60
 
     this._socket = socket
-    this._options = options as IOptions
+    this._options = options as Options
 
     socket.addEventListener('message', this._messageHandler = async (e: any) => {
-      let data: IRequest
+      let data: RequestData
       // parse data
       try {
         data = JSON.parse(
@@ -112,7 +112,7 @@ export default class WebSocketer {
    */
   async send<T>(
     name: string,
-    payload?: TPayload) {
+    payload?: Payload) {
 
     return new Promise<T>((resolve, reject) => {
       try {
@@ -140,7 +140,7 @@ export default class WebSocketer {
    */
   listen<T>(
     name: string,
-    listener: TListener<T>) {
+    listener: Listener<T>) {
 
     let listeners = this._listeners.get(name)
     if (!listeners) {
@@ -169,11 +169,11 @@ export default class WebSocketer {
    */
   private _send(
     name: string,
-    payload?: TPayload,
-    response?: TResponseHandler) {
+    payload?: Payload,
+    response?: ResponseHandler) {
 
     // build request object
-    const request: IRequest = {
+    const request: RequestData = {
       ns: this._options.namespace,
       id: nanoid(24),
       nm: name,
@@ -207,17 +207,17 @@ export default class WebSocketer {
     )
   }
 
-  private async _handleRequest(data: IRequest) {
+  private async _handleRequest(data: RequestData) {
     // create replay function to be passed to listeners
-    const reply: TReply = (payload, error) => {
+    const reply: Reply = (payload, error) => {
       if (!data.rs) {
         throw new WebSocketerError(
           `Too many reply for "${data.nm}"`,
           'ERR_WSR_TOO_MANY_REPLY'
         )
       }
-      // copy data to avoid mutation and pollution
-      const replayData: IRequest = {
+      // copy request data as reply data to avoid mutation and pollution
+      const replyData: RequestData = {
         ns: data.ns,
         id: data.id,
         nm: data.nm,
@@ -228,19 +228,19 @@ export default class WebSocketer {
         ti: data.ti
       }
       // flag data as response (not request)
-      replayData.rq = false
+      replyData.rq = false
       // attach payload
-      replayData.pl = payload
+      replyData.pl = payload
       // attach error if provided
       if (error) {
-        replayData.er = {
+        replyData.er = {
           name: error.name,
           code: error.code,
           message: error.message
         } as any
       }
       // dispatch data
-      this._socket.send(JSON.stringify(replayData))
+      this._socket.send(JSON.stringify(replyData))
       // reset response flag to avoid multiple reply
       data.rs = undefined
     }
@@ -290,7 +290,7 @@ export default class WebSocketer {
     }
   }
 
-  private _handleResponse(data: IRequest) {
+  private _handleResponse(data: RequestData) {
     // get the request object
     const request = this._requests.get(data.id)
     if (!request) return
