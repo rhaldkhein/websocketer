@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/rhaldkhein/websocketer#readme",
   "scripts": {
-    "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest"
+    "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "nanoid": "^4.0.0"
