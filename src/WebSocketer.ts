@@ -155,6 +155,7 @@ export default class WebSocketer {
    */
   destroy() {
     this._socket.removeEventListener('message', this._messageHandler)
+    this._requests.forEach(data => clearTimeout(data.ti))
     this._requests.clear()
     this._listeners.clear()
     // @ts-ignore
@@ -193,6 +194,7 @@ export default class WebSocketer {
     // create a timeout to cleanup the request when reached and throw error
     request.ti = setTimeout(
       () => {
+        request.ti = null
         this._requests.delete(request.id)
         response(
           new WebSocketerError(
@@ -223,9 +225,7 @@ export default class WebSocketer {
         nm: data.nm,
         rq: data.rq,
         er: data.er,
-        pl: data.pl,
-        rs: data.rs,
-        ti: data.ti
+        pl: data.pl
       }
       // flag data as response (not request)
       replyData.rq = false
@@ -305,6 +305,7 @@ export default class WebSocketer {
     // delete the request and timeout because it's already handled
     this._requests.delete(request.id)
     clearTimeout(request.ti)
+    request.ti = null
   }
 
 }
