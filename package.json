@@ -25,6 +25,7 @@
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",
     "build": "tsc -p tsconfig.build.json",
+    "prebuild": "del-cli build",
     "prepublish": "npm run build"
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.37.0",
     "@typescript-eslint/parser": "^5.37.0",
+    "del-cli": "^5.0.0",
     "eslint": "^8.23.1",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",
