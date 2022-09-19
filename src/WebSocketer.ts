@@ -4,7 +4,7 @@ export type Payload = any
 
 export type Reply = (
   payload?: Payload,
-  error?: Error) => void
+  error?: unknown) => void
 
 export type Listener<T = Payload> = (
   payload: T,
@@ -211,7 +211,7 @@ export default class WebSocketer {
 
   private async _handleRequest(data: RequestData) {
     // create replay function to be passed to listeners
-    const reply: Reply = (payload, error) => {
+    const reply: Reply = (payload, error: any) => {
       if (!data.rs) {
         throw new WebSocketerError(
           `Too many reply for "${data.nm}"`,
