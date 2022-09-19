@@ -4,7 +4,7 @@ export type Payload = any
 
 export type Reply = (
   payload?: Payload,
-  error?: Error | WebSocketerError) => void
+  error?: Error) => void
 
 export type Listener<T = Payload> = (
   payload: T,
