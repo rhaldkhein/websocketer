@@ -4,7 +4,7 @@ export type Payload = any
 
 export type Reply = (
   payload?: Payload,
-  error?: WebSocketerError) => void
+  error?: Error | WebSocketerError) => void
 
 export type Listener<T = Payload> = (
   payload: T,
@@ -233,11 +233,13 @@ export default class WebSocketer {
       replyData.pl = payload
       // attach error if provided
       if (error) {
-        replyData.er = {
-          name: error.name,
-          code: error.code,
-          message: error.message
-        } as any
+        replyData.er = this._options.errorFilter(
+          {
+            name: error.name,
+            code: error instanceof WebSocketerError ? error.code : 'ERR_WSR_INTERNAL',
+            message: error.message
+          }
+        )
       }
       // dispatch data
       this._socket.send(JSON.stringify(replyData))
@@ -264,29 +266,19 @@ export default class WebSocketer {
         if (ret instanceof Promise) await ret
       }
       // if reply is not called, reply with error
-      if (data.rs) {
-        reply(
-          undefined,
-          new WebSocketerError(
-            `No reply for "${data.nm}"`,
-            'ERR_WSR_NO_REPLY'
-          )
+      if (!data.rs) return
+      reply(
+        undefined,
+        new WebSocketerError(
+          `No reply for "${data.nm}"`,
+          'ERR_WSR_NO_REPLY'
         )
-      }
+      )
     } catch (error: any) {
       // handle error and reply with error
       if (error.code === 'ERR_WSR_TOO_MANY_REPLY') throw error
       if (!data.rs) return
-      if (error instanceof WebSocketerError) {
-        reply(undefined, error)
-      } else {
-        reply(
-          undefined,
-          this._options.errorFilter(
-            new WebSocketerError(error.message, error.code)
-          )
-        )
-      }
+      reply(undefined, error)
     }
   }
 
