@@ -1,5 +1,5 @@
-import WebSocketer, { Options } from './WebSocketer'
-export * from './WebSocketer'
+import WebSocketer, { Options } from './WebSocketer.js'
+export * from './WebSocketer.js'
 
 export { WebSocketer }
 export default function createWebSocketer(

@@ -10,6 +10,9 @@ const config = {
     'ts-jest': {
       useESM: true
     }
+  },
+  moduleNameMapper: {
+    './WebSocketer.js': '<rootDir>/src/WebSocketer.ts'
   }
 }
 

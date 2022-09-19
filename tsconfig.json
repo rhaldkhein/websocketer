@@ -21,6 +21,7 @@
     "strict": true,
     "strictNullChecks": true,
     "target": "ES6",
+    "allowJs": true,
     "downlevelIteration": true
   },
   "include": [
