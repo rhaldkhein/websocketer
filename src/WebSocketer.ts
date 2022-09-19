@@ -8,7 +8,6 @@ export type Reply = (
 
 export type Listener<T = Payload> = (
   payload: T,
-  replay: Reply,
   request: RequestData) => void
 
 export type ResponseHandler = (
@@ -210,76 +209,45 @@ export default class WebSocketer {
   }
 
   private async _handleRequest(data: RequestData) {
-    // create replay function to be passed to listeners
-    const reply: Reply = (payload, error: any) => {
-      if (!data.rs) {
-        throw new WebSocketerError(
-          `Too many reply for "${data.nm}"`,
-          'ERR_WSR_TOO_MANY_REPLY'
-        )
-      }
-      // copy request data as reply data to avoid mutation and pollution
-      const replyData: RequestData = {
-        ns: data.ns,
-        id: data.id,
-        nm: data.nm,
-        rq: data.rq,
-        er: data.er,
-        pl: data.pl
-      }
-      // flag data as response (not request)
-      replyData.rq = false
-      // attach payload
-      replyData.pl = payload
-      // attach error if provided
-      if (error) {
-        replyData.er = this._options.errorFilter(
-          {
-            name: error.name,
-            code: error instanceof WebSocketerError ? error.code : 'ERR_WSR_INTERNAL',
-            message: error.message
-          }
-        )
-      }
-      // dispatch data
-      this._socket.send(JSON.stringify(replyData))
-      // reset response flag to avoid multiple reply
-      data.rs = undefined
+    // copy request data as reply data to avoid mutation and pollution
+    const replyData: RequestData = {
+      ns: data.ns,
+      id: data.id,
+      nm: data.nm,
+      rq: false
     }
-    // get the listeners
-    const listeners = this._listeners.get(data.nm)
-    if (!listeners || !listeners.length) {
-      // if no listeners, reply with error
-      reply(
-        undefined,
-        new WebSocketerError(
+    try {
+      // get the listeners
+      const listeners = this._listeners.get(data.nm)
+      if (!listeners || !listeners.length) {
+        // if no listeners, reply with error
+        throw new WebSocketerError(
           `No listener for "${data.nm}"`,
           'ERR_WSR_NO_LISTENER'
         )
-      )
-      return
-    }
-    // trigger the listeners
-    try {
-      for (let i = 0; i < listeners.length; i++) {
-        const ret: any = listeners[i](data.pl, reply, data)
-        if (ret instanceof Promise) await ret
       }
-      // if reply is not called, reply with error
-      if (!data.rs) return
-      reply(
-        undefined,
-        new WebSocketerError(
-          `No reply for "${data.nm}"`,
-          'ERR_WSR_NO_REPLY'
-        )
-      )
+      // trigger listeners
+      let result: any
+      for (let i = 0; i < listeners.length; i++) {
+        const reply: any = listeners[i](data.pl, data)
+        if (reply !== undefined) {
+          result = reply instanceof Promise ? await reply : reply
+        }
+      }
+      // attach payload
+      replyData.pl = result
     } catch (error: any) {
-      // handle error and reply with error
-      if (error.code === 'ERR_WSR_TOO_MANY_REPLY') throw error
-      if (!data.rs) return
-      reply(undefined, error)
+      // attach error
+      replyData.er = this._options.errorFilter(
+        {
+          name: error.name,
+          code: error instanceof WebSocketerError ? error.code : 'ERR_WSR_INTERNAL',
+          message: error.message
+        }
+      )
     }
+    // dispatch data
+    this._socket.send(JSON.stringify(replyData))
   }
 
   private _handleResponse(data: RequestData) {

@@ -44,9 +44,8 @@ describe('cache service', () => {
     wsrServer = new WebSocketer(wsserver)
     wsrClient = new WebSocketer(wsclient)
 
-    wsrServer.listen<string>('no_data', (data, reply) => {
+    wsrServer.listen<string>('no_data', (data) => {
       expect(data).toBeUndefined()
-      reply()
     })
     const payload = await wsrClient.send('no_data')
     expect(payload).toBeUndefined()
@@ -55,9 +54,9 @@ describe('cache service', () => {
 
   test('should send and reply with payload', async () => {
 
-    wsrServer?.listen<string>('with_payload', (data, reply) => {
+    wsrServer?.listen<string>('with_payload', (data) => {
       expect(data).toBe('hello')
-      reply('hi')
+      return 'hi'
     })
     const payload = await wsrClient?.send('with_payload', 'hello')
     expect(payload).toBe('hi')
@@ -66,9 +65,9 @@ describe('cache service', () => {
 
   test('should send and reply from server to client', async () => {
 
-    wsrClient?.listen<string>('server_to_client', (data, reply) => {
+    wsrClient?.listen<string>('server_to_client', (data) => {
       expect(data).toBe('nice')
-      reply('one')
+      return 'one'
     })
     const payload = await wsrServer?.send('server_to_client', 'nice')
     expect(payload).toBe('one')
@@ -77,8 +76,8 @@ describe('cache service', () => {
 
   test('should send and reply all types', async () => {
 
-    wsrServer?.listen<string>('all_types', (data, reply) => {
-      reply(data)
+    wsrServer?.listen<string>('all_types', (data) => {
+      return data
     })
     const str = await wsrClient?.send('all_types', 'str')
     expect(str).toBe('str')
@@ -94,11 +93,11 @@ describe('cache service', () => {
   })
 
   test('should send and reply async', async () => {
-    wsrServer?.listen<string>('test_async', async (data, reply, req) => {
+    wsrServer?.listen<string>('test_async', async (data) => {
       await new Promise(resolve => {
         setTimeout(() => resolve(undefined), 1000)
       })
-      reply(data)
+      return data
     })
     // note! response time should only be 1 second
     const result = await Promise.all([
@@ -113,23 +112,20 @@ describe('cache service', () => {
 
   test('should error', async () => {
 
-    wsrServer?.listen('no_reply', (data, reply) => { })
-    wsrServer?.listen('two_replies', (data, reply) => {
-      reply(1)
+    wsrServer?.listen('no_return', (data) => { })
+    wsrServer?.listen('two_replies', (data) => {
+      return 1
     })
-    // #TODO test multiple replies error
-    // const secondListener = jest.fn((data, reply) => {
-    //   reply(2)
-    // })
-    // wsrServer?.listen('two_replies', secondListener)
+    wsrServer?.listen('two_replies', (data) => {
+      return 2
+    })
+
     expect(wsrClient?.send('no_listener_on_server')).rejects
       .toMatchObject({ code: 'ERR_WSR_NO_LISTENER' })
-    expect(wsrClient?.send('no_reply')).rejects
-      .toMatchObject({ code: 'ERR_WSR_NO_REPLY' })
-    expect(wsrClient?.send('two_replies')).resolves
-      .toEqual(1)
-    // expect(secondListener).toHaveBeenCalled()
-    // expect(secondListener.).toHaveBeenCalled()
+    const noreturn = await wsrClient?.send('no_return')
+    expect(noreturn).toBeUndefined()
+    const tworeplies = await wsrClient?.send('two_replies')
+    expect(tworeplies).toBe(2)
 
   })
 
@@ -137,11 +133,10 @@ describe('cache service', () => {
 
     const timeoutClient = new WebSocketer(wsclient, { timeout: 1 })
 
-    wsrServer?.listen('test_timeout', async (data, reply) => {
+    wsrServer?.listen('test_timeout', async () => {
       await new Promise(resolve => {
         setTimeout(() => resolve(undefined), 2000)
       })
-      reply()
     })
 
     await expect(timeoutClient.send('test_timeout')).rejects
@@ -152,8 +147,8 @@ describe('cache service', () => {
 
   test('should destroy', async () => {
 
-    wsrServer?.listen('to_destroy', (data, reply) => {
-      reply(data)
+    wsrServer?.listen('to_destroy', (data) => {
+      return data
     })
     const data = await wsrClient?.send('to_destroy', 1)
     expect(data).toBe(1)

@@ -42,7 +42,7 @@ describe('cache service', () => {
     const wsrServer: WebSocketer = createWebSocketer(wsserver)
     const wsrClient: WebSocketer = createWebSocketer(wsclient)
 
-    wsrServer.listen('test_request', (data, reply) => reply(data))
+    wsrServer.listen('test_request', (data) => data)
     const payload = await wsrClient.send('test_request', 1)
     expect(payload).toBe(1)
 
