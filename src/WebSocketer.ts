@@ -45,9 +45,11 @@ export interface Options {
 
 export class WebSocketerError extends Error {
   code: string
-  constructor(message: string, code?: string) {
+  payload: any
+  constructor(message: string, code?: string, payload?: any) {
     super(message || 'Something went wrong')
     this.code = code || 'ERR_WSR_UNKNOWN'
+    this.payload = payload
   }
 }
 
@@ -117,7 +119,15 @@ export default class WebSocketer {
     return new Promise<T>((resolve, reject) => {
       try {
         this._send(name, payload, (err, resPayload) => {
-          if (err) return reject(new WebSocketerError(err.message, err.code))
+          if (err) {
+            return reject(
+              new WebSocketerError(
+                err.message,
+                err.code,
+                err.payload
+              )
+            )
+          }
           resolve(resPayload)
         })
       } catch (error: any) {
@@ -243,7 +253,8 @@ export default class WebSocketer {
         {
           name: error.name,
           code: error.code || 'ERR_WSR_INTERNAL',
-          message: error.message
+          message: error.message,
+          payload: error.payload
         }
       )
     }
