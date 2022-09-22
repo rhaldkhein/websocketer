@@ -8,8 +8,7 @@ export type Reply = (
 
 export type Listener<T = Payload> = (
   payload: T,
-  request: RequestData,
-  socket: any) => void
+  request: RequestData) => void
 
 export type ResponseHandler = (
   error: WebSocketerError | null,
@@ -35,6 +34,8 @@ export interface RequestData<T = any> {
   ti?: any
   /** local data space */
   locals?: Record<string, any>
+  /** attached socket */
+  socket?: any
 }
 
 export interface Options {
@@ -221,12 +222,9 @@ export default class WebSocketer {
 
   private async _handleRequest(data: RequestData) {
     // copy request data as reply data to avoid mutation and pollution
-    const replyData: RequestData = {
-      ns: data.ns,
-      id: data.id,
-      nm: data.nm,
-      rq: false
-    }
+    let _payload
+    let _error
+    data.socket = this._socket
     try {
       // get the listeners
       const listeners = this._listeners.get(data.nm)
@@ -240,16 +238,16 @@ export default class WebSocketer {
       // trigger listeners
       let result: any
       for (let i = 0; i < listeners.length; i++) {
-        const reply: any = listeners[i](data.pl, data, this._socket)
+        const reply: any = listeners[i](data.pl, data)
         if (reply !== undefined) {
           result = reply instanceof Promise ? await reply : reply
         }
       }
       // attach payload
-      replyData.pl = result
+      _payload = result
     } catch (error: any) {
       // attach error
-      replyData.er = this._options.errorFilter(
+      _error = this._options.errorFilter(
         {
           name: error.name,
           code: error.code || 'ERR_WSR_INTERNAL',
@@ -259,6 +257,14 @@ export default class WebSocketer {
       )
     }
     // dispatch data
+    const replyData: RequestData = {
+      ns: data.ns,
+      id: data.id,
+      nm: data.nm,
+      rq: false,
+      pl: _payload,
+      er: _error
+    }
     this._socket.send(JSON.stringify(replyData))
   }
 
