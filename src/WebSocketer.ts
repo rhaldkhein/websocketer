@@ -8,7 +8,8 @@ export type Reply = (
 
 export type Listener<T = Payload> = (
   payload: T,
-  request: RequestData) => void
+  request: RequestData,
+  socket: any) => void
 
 export type ResponseHandler = (
   error: WebSocketerError | null,
@@ -229,7 +230,7 @@ export default class WebSocketer {
       // trigger listeners
       let result: any
       for (let i = 0; i < listeners.length; i++) {
-        const reply: any = listeners[i](data.pl, data)
+        const reply: any = listeners[i](data.pl, data, this._socket)
         if (reply !== undefined) {
           result = reply instanceof Promise ? await reply : reply
         }
@@ -241,7 +242,7 @@ export default class WebSocketer {
       replyData.er = this._options.errorFilter(
         {
           name: error.name,
-          code: error instanceof WebSocketerError ? error.code : 'ERR_WSR_INTERNAL',
+          code: error.code || 'ERR_WSR_INTERNAL',
           message: error.message
         }
       )
