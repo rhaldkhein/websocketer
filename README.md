@@ -8,11 +8,11 @@ import { WebSocketer } from 'websocketer'
 
 // server
 const server = new WebSocketer(socket)
-server.listen('hello', async (data, reply) => {
+server.listen('hello', async (data) => {
   // data is { nice: 1 }
   const result = await heavyFunction(data)
   // suppose result is { hello: 'world' }
-  reply(result)
+  return result
 })
 
 
