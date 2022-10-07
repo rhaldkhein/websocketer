@@ -22,13 +22,13 @@
   "homepage": "https://github.com/rhaldkhein/websocketer#readme",
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",
-    "build": "tsc -p tsconfig.build.json",
-    "prebuild": "del-cli build",
+    "build": "unbuild",
+    "prebuild": "del-cli dist",
     "prepublish": "npm run build"
   },
   "type": "module",
   "main": "dist/index.cjs",
-  "types": "./dist/index.d.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
