@@ -1,6 +1,6 @@
 {
   "name": "websocketer",
-  "version": "0.2.4",
+  "version": "1.0.0",
   "description": "Simple and easy message passing for WebSocket",
   "main": "build/index.js",
   "type": "module",
