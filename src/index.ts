@@ -1,10 +1,14 @@
-import WebSocketer, { Options } from './WebSocketer.js'
-export * from './WebSocketer.js'
+import WebSocketer, { Options } from './WebSocketer'
+export * from './WebSocketer'
 
-export { WebSocketer }
-export default function createWebSocketer(
+function createWebSocketer(
   socket: any,
   options?: Partial<Options>) {
 
   return new WebSocketer(socket, options)
+}
+
+export {
+  WebSocketer,
+  createWebSocketer
 }
