@@ -3,7 +3,6 @@
   "version": "0.2.3",
   "description": "Simple and easy message passing for WebSocket",
   "main": "build/index.js",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://rhaldkhein@github.com/rhaldkhein/websocketer.git"
