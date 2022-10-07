@@ -54,6 +54,9 @@ export class WebSocketerError extends Error {
   }
 }
 
+/**
+ * WebSocketer class
+ */
 export default class WebSocketer {
 
   private _options: Options
@@ -63,7 +66,8 @@ export default class WebSocketer {
   private _messageHandler: (e: any) => Promise<void>
 
   /**
-   * WebSocketer
+   * Create a WebSocketer instance.
+   *
    * @param socket WebSocket instance to wrap
    * @param opt.namespace custom message namespace to avoid conflict.
    * default: "websocketer"
@@ -109,6 +113,7 @@ export default class WebSocketer {
 
   /**
    * Send a request to the server and returns the reponse payload via Promise.
+   *
    * @param name name
    * @param payload payload
    * @returns Promise
@@ -138,14 +143,14 @@ export default class WebSocketer {
   }
 
   /**
-   * Listens to a request and send a reply by calling `reply` function passed
-   * into the listener.
+   * Listens to a request and send a reply by returning a value.
    * ```js
-   * websocketer.listen('name', async (payload, reply) => {
+   * websocketer.listen('name', async (payload) => {
    *   const result = await heavyFunction(payload)
-   *   reply(result)
+   *   return result
    * })
    * ```
+   *
    * @param name name
    * @param listener function listener
    */
@@ -175,6 +180,7 @@ export default class WebSocketer {
 
   /**
    * Internal send function using callback.
+   *
    * @param name name
    * @param payload payload
    * @param response response callback
