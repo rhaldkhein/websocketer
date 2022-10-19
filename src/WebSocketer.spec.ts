@@ -110,6 +110,16 @@ describe('cache service', () => {
     expect(result[2]).toBe(3)
   })
 
+  test('should get listeners', async () => {
+
+    const clientx = new WebSocketer(wsclient)
+    clientx.listen('foo', () => null)
+    clientx.listen('foo', () => null)
+    clientx.listen('foo', () => null)
+    expect(clientx.listeners('foo').length === 3)
+
+  })
+
   test('should error', async () => {
 
     wsrServer?.listen('no_return', (data) => { })

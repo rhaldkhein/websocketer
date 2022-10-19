@@ -1,5 +1,5 @@
 import WebSocket, { WebSocketServer } from 'ws'
-import createWebSocketer, { WebSocketer } from './index'
+import { createWebSocketer, WebSocketer } from './index'
 
 describe('cache service', () => {
 

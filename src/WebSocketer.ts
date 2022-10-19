@@ -114,7 +114,7 @@ export default class WebSocketer {
   /**
    * Return all listeners of specific name
    */
-  getListeners(
+  listeners(
     name: string) {
 
     return this._listeners.get(name) || []
@@ -152,7 +152,7 @@ export default class WebSocketer {
   }
 
   /**
-   * Listens to a request and send a reply by returning a value.
+   * Listen to a request and send a reply by returning a value.
    * ```js
    * websocketer.listen('name', async (payload) => {
    *   const result = await heavyFunction(payload)
@@ -176,13 +176,34 @@ export default class WebSocketer {
   }
 
   /**
-   * Removes listeners and requests.
+   * Remove all specific listeners.
    */
-  destroy() {
-    this._socket.removeEventListener('message', this._messageHandler)
+  forget(
+    name: string) {
+
+    this._listeners.delete(name)
+  }
+
+  /**
+   * Remove all listeners and requests.
+   */
+  clear() {
     this._requests.forEach(data => clearTimeout(data.ti))
     this._requests.clear()
     this._listeners.clear()
+  }
+
+  /**
+   * Disconnect from socket and remove all listeners, requests, timeouts, and
+   * everything else.
+   */
+  destroy() {
+    this._socket.removeEventListener('message', this._messageHandler)
+    this.clear()
+    // @ts-ignore
+    this._options = {}
+    // @ts-ignore
+    this._messageHandler = null
     // @ts-ignore
     this._socket = null
   }
