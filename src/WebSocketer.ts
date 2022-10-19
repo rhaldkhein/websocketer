@@ -117,7 +117,7 @@ export default class WebSocketer {
   getListeners(
     name: string) {
 
-    return this._listeners.get(name)
+    return this._listeners.get(name) || []
   }
 
   /**
