@@ -116,8 +116,15 @@ describe('cache service', () => {
     clientx.listen('foo', () => null)
     clientx.listen('foo', () => null)
     clientx.listen('foo', () => null)
-    expect(clientx.listeners('foo').length === 3)
+    clientx.listen('bar', () => null)
+    clientx.listen('bar', () => null)
 
+    expect(clientx.listeners('foo').length === 3)
+    clientx.forget('foo')
+    expect(clientx.listeners('foo').length === 0)
+    expect(clientx.listeners('bar').length === 2)
+    clientx.clear()
+    expect(clientx.listeners('bar').length === 0)
   })
 
   test('should error', async () => {
