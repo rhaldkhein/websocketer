@@ -112,6 +112,15 @@ export default class WebSocketer {
   }
 
   /**
+   * Return all listeners of specific name
+   */
+  getListeners(
+    name: string) {
+
+    return this._listeners.get(name)
+  }
+
+  /**
    * Send a request to the server and returns the reponse payload via Promise.
    *
    * @param name name
