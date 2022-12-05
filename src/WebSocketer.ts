@@ -41,6 +41,7 @@ export interface RequestData<T = any> {
 export interface Options {
   namespace: string
   timeout: number
+  ping: number
   errorFilter: (err: WebSocketerError) => WebSocketerError
 }
 
@@ -64,6 +65,7 @@ export default class WebSocketer {
   private _requests = new Map<string, RequestData>()
   private _listeners = new Map<string, Listener[]>()
   private _messageHandler: (e: any) => Promise<void>
+  private _pingIntervalId: any
 
   /**
    * Create a WebSocketer instance.
@@ -71,8 +73,10 @@ export default class WebSocketer {
    * @param socket WebSocket instance to wrap
    * @param opt.namespace custom message namespace to avoid conflict.
    * default: "websocketer"
-   * @param opt.timeout custom request timeout.
-   * default: 60 (seconds)
+   * @param opt.timeout custom request timeout in seconds.
+   * default: 60
+   * @param opt.ping ping connection in seconds.
+   * default: 0 (disabled)
    */
   constructor(
     socket: any,
@@ -82,9 +86,24 @@ export default class WebSocketer {
     options.errorFilter = options.errorFilter || (err => err)
     options.namespace = options.namespace || 'websocketer'
     options.timeout = options.timeout || 60
+    options.ping = options.ping || 0
 
     this._socket = socket
     this._options = options as Options
+    this.listen('_ping_', (data) => data)
+
+    if (options.ping) {
+      this._pingIntervalId = setInterval(
+        async () => {
+          try {
+            await this.send('_ping_')
+          } catch (error) {
+            // do nothing
+          }
+        },
+        1000 * options.ping
+      )
+    }
 
     socket.addEventListener('message', this._messageHandler = async (e: any) => {
       let data: RequestData
@@ -191,6 +210,7 @@ export default class WebSocketer {
     this._requests.forEach(data => clearTimeout(data.ti))
     this._requests.clear()
     this._listeners.clear()
+    this.listen('_ping_', (data) => data)
   }
 
   /**
@@ -200,6 +220,8 @@ export default class WebSocketer {
   destroy() {
     this._socket.removeEventListener('message', this._messageHandler)
     this.clear()
+    this._listeners.clear()
+    clearInterval(this._pingIntervalId)
     // @ts-ignore
     this._options = {}
     // @ts-ignore

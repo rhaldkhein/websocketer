@@ -110,6 +110,18 @@ describe('cache service', () => {
     expect(result[2]).toBe(3)
   })
 
+  test('should ping', async () => {
+
+    const cl = new WebSocketer(wsclient, {
+      ping: 1
+    })
+    await new Promise(resolve => {
+      setTimeout(resolve, 2500)
+    })
+    expect(cl.listeners('_ping_').length === 1)
+    cl.destroy()
+  })
+
   test('should get listeners', async () => {
 
     const clientx = new WebSocketer(wsclient)
