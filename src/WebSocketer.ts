@@ -48,8 +48,9 @@ export interface Options {
 export class WebSocketerError extends Error {
   code: string
   payload: any
-  constructor(message: string, code?: string, payload?: any) {
+  constructor(message: string, code?: string, payload?: any, name?: string) {
     super(message || 'Something went wrong')
+    this.name = name || 'WebSocketerError'
     this.code = code || 'ERR_WSR_UNKNOWN'
     this.payload = payload
   }
@@ -158,7 +159,8 @@ export default class WebSocketer {
               new WebSocketerError(
                 err.message,
                 err.code,
-                err.payload
+                err.payload,
+                'RemoteWebSocketerError'
               )
             )
           }
