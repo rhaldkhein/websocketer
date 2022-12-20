@@ -153,11 +153,11 @@ export default class WebSocketer {
 
     return new Promise<T>((resolve, reject) => {
       try {
-        this._send(name, payload, (err, resPayload) => {
+        this._send(name, payload, (err, resPayload, request) => {
           if (err) {
             return reject(
               new WebSocketerError(
-                err.message,
+                `${err.message} (${request.nm})`,
                 err.code,
                 err.payload,
                 'RemoteWebSocketerError'
