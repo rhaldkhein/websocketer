@@ -91,7 +91,7 @@ export default class WebSocketer {
 
     this._socket = socket
     this._options = options as Options
-    this.listen('_ping_', (data) => data)
+    this.clear()
 
     if (options.ping) {
       this._pingIntervalId = setInterval(
@@ -220,7 +220,7 @@ export default class WebSocketer {
    * everything else.
    */
   destroy() {
-    this._socket.removeEventListener('message', this._messageHandler)
+    this._socket?.removeEventListener('message', this._messageHandler)
     this.clear()
     this._listeners.clear()
     clearInterval(this._pingIntervalId)

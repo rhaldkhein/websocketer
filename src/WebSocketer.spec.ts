@@ -10,12 +10,12 @@ describe('cache service', () => {
   let wsrClient: WebSocketer | undefined
 
   beforeAll(async () => {
+    wss = new WebSocketServer({ port: 5000 })
+    wss.on('connection', ws => {
+      wsserver = ws
+    })
     await new Promise(resolve => {
-      wss = new WebSocketServer({ port: 5000 })
-      wss.on('connection', ws => {
-        wsserver = ws
-      })
-      wss.on('listening', () => {
+      wss?.on('listening', () => {
         wsclient = new WebSocket('ws://localhost:5000')
         wsclient.on('open', () => {
           resolve(undefined)
@@ -25,6 +25,17 @@ describe('cache service', () => {
   })
 
   afterAll(async () => {
+    wsrServer?.destroy()
+    wsrClient?.destroy()
+    wsserver?.removeAllListeners()
+    wsclient?.removeAllListeners()
+    wss?.removeAllListeners()
+    await new Promise(resolve => {
+      wsserver?.on('close', () => {
+        resolve(undefined)
+      })
+      wsserver?.close()
+    })
     await new Promise(resolve => {
       wsclient?.on('close', () => {
         resolve(undefined)
@@ -37,6 +48,15 @@ describe('cache service', () => {
       })
       wss?.close()
     })
+    wss = undefined
+    wsserver = undefined
+    wsclient = undefined
+    wsrServer = undefined
+    wsrClient = undefined
+  })
+
+  test('start', async () => {
+    expect(1).toBe(1)
   })
 
   test('should send and reply', async () => {
@@ -116,7 +136,7 @@ describe('cache service', () => {
       ping: 1
     })
     await new Promise(resolve => {
-      setTimeout(resolve, 2500)
+      setTimeout(resolve, 1500)
     })
     expect(cl.listeners('_ping_').length === 1)
     cl.destroy()
@@ -161,17 +181,17 @@ describe('cache service', () => {
   test('should error timeout', async () => {
 
     const timeoutClient = new WebSocketer(wsclient, { timeout: 1 })
-
+    let timeoutId
     wsrServer?.listen('test_timeout', async () => {
       await new Promise(resolve => {
-        setTimeout(() => resolve(undefined), 2000)
+        timeoutId = setTimeout(() => resolve(undefined), 2000)
       })
     })
 
     await expect(timeoutClient.send('test_timeout')).rejects
       .toMatchObject({ code: 'ERR_WSR_TIMEOUT' })
     timeoutClient.destroy()
-
+    clearTimeout(timeoutId)
   })
 
   test('should destroy', async () => {

@@ -23,6 +23,15 @@ describe('cache service', () => {
   })
 
   afterAll(async () => {
+    wsserver?.removeAllListeners()
+    wsclient?.removeAllListeners()
+    wss?.removeAllListeners()
+    await new Promise(resolve => {
+      wsserver?.on('close', () => {
+        resolve(undefined)
+      })
+      wsserver?.close()
+    })
     await new Promise(resolve => {
       wsclient?.on('close', () => {
         resolve(undefined)
@@ -35,6 +44,9 @@ describe('cache service', () => {
       })
       wss?.close()
     })
+    wss = undefined
+    wsserver = undefined
+    wsclient = undefined
   })
 
   test('should work createWebSocketer', async () => {
