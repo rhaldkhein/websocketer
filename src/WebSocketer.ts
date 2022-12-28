@@ -1,5 +1,8 @@
-import { nanoid } from 'nanoid'
+import { customAlphabet } from 'nanoid'
 import { Cluster } from './Cluster'
+
+const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+const nanoid = customAlphabet(chars)
 
 export type Payload = any
 
@@ -40,6 +43,7 @@ export interface RequestData<T = any> {
 }
 
 export interface Options {
+  id: string
   namespace: string
   timeout: number
   errorFilter: (err: WebSocketerError) => WebSocketerError
@@ -75,12 +79,16 @@ export default class WebSocketer {
    * Create a WebSocketer instance.
    *
    * @param socket WebSocket instance to wrap
+   * @param opt.id id of client.
+   * default: (auto generated string)
    * @param opt.namespace custom message namespace to avoid conflict.
-   * default: "websocketer"
+   * default: `"websocketer"`
    * @param opt.timeout custom request timeout in seconds.
-   * default: 60
+   * default: `60`
    * @param opt.ping ping connection in seconds.
-   * default: 0 (disabled)
+   * default: `0` (disabled)
+   * @param opt.cluster server side only, the cluster broadcast server.
+   * default: `undefined`
    */
   constructor(
     socket: any,
@@ -91,6 +99,7 @@ export default class WebSocketer {
     options.namespace = options.namespace || 'websocketer'
     options.timeout = options.timeout || 60
     options.ping = options.ping || 0
+    options.id = options.id || nanoid(24)
 
     this._socket = socket
     this._cluster = options.cluster
@@ -261,11 +270,7 @@ export default class WebSocketer {
     // tell server that we need a response
     if (response) request.rs = true
     // send the request
-    if (this._cluster) {
-      this._cluster.send(request)
-    } else {
-      this._socket.send(JSON.stringify(request))
-    }
+    this._socket.send(JSON.stringify(request))
     // save the request in order to handle response
     if (!response) return
     // attach response function to request object
@@ -290,7 +295,11 @@ export default class WebSocketer {
     )
   }
 
-  private async _handleRequest(data: RequestData) {
+  private async _handleRequest(
+    data: RequestData) {
+
+    // if we got cluster instance, then forward it
+    if (this._cluster) return this._handleRequestWithCluster(data)
     // copy request data as reply data to avoid mutation and pollution
     let _payload
     let _error
@@ -338,7 +347,15 @@ export default class WebSocketer {
     this._socket.send(JSON.stringify(replyData))
   }
 
-  private _handleResponse(data: RequestData) {
+  private async _handleRequestWithCluster(
+    data: RequestData) {
+
+    return this._cluster?.send(data)
+  }
+
+  private _handleResponse(
+    data: RequestData) {
+
     // get the request object
     const request = this._requests.get(data.id)
     if (!request) return
