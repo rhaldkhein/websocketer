@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import { Cluster } from './Cluster'
 
 export type Payload = any
 
@@ -41,8 +42,9 @@ export interface RequestData<T = any> {
 export interface Options {
   namespace: string
   timeout: number
-  ping: number
   errorFilter: (err: WebSocketerError) => WebSocketerError
+  ping?: number
+  cluster?: Cluster
 }
 
 export class WebSocketerError extends Error {
@@ -67,6 +69,7 @@ export default class WebSocketer {
   private _listeners = new Map<string, Listener[]>()
   private _messageHandler: (e: any) => Promise<void>
   private _pingIntervalId: any
+  private _cluster?: Cluster
 
   /**
    * Create a WebSocketer instance.
@@ -83,13 +86,14 @@ export default class WebSocketer {
     socket: any,
     options?: Partial<Options>) {
 
-    options = options || {}
+    options = options || {} as Options
     options.errorFilter = options.errorFilter || (err => err)
     options.namespace = options.namespace || 'websocketer'
     options.timeout = options.timeout || 60
     options.ping = options.ping || 0
 
     this._socket = socket
+    this._cluster = options.cluster
     this._options = options as Options
     this.clear()
 
@@ -230,6 +234,8 @@ export default class WebSocketer {
     this._messageHandler = null
     // @ts-ignore
     this._socket = null
+    // @ts-ignore
+    this._cluster = null
   }
 
   /**
@@ -255,7 +261,11 @@ export default class WebSocketer {
     // tell server that we need a response
     if (response) request.rs = true
     // send the request
-    this._socket.send(JSON.stringify(request))
+    if (this._cluster) {
+      this._cluster.send(request)
+    } else {
+      this._socket.send(JSON.stringify(request))
+    }
     // save the request in order to handle response
     if (!response) return
     // attach response function to request object
