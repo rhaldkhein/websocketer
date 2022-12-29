@@ -1,7 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws'
 import { createWebSocketer, WebSocketer } from './index'
 
-describe('cache service', () => {
+describe('index', () => {
 
   let wss: WebSocketServer | undefined
   let wsserver: WebSocket | undefined

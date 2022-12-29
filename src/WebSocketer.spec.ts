@@ -1,7 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws'
 import WebSocketer from './WebSocketer'
 
-describe('cache service', () => {
+describe('websocketer', () => {
 
   let wss: WebSocketServer | undefined
   let wsserver: WebSocket | undefined
@@ -142,23 +142,6 @@ describe('cache service', () => {
     cl.destroy()
   })
 
-  test('should get listeners', async () => {
-
-    const clientx = new WebSocketer(wsclient)
-    clientx.listen('foo', () => null)
-    clientx.listen('foo', () => null)
-    clientx.listen('foo', () => null)
-    clientx.listen('bar', () => null)
-    clientx.listen('bar', () => null)
-
-    expect(clientx.listeners('foo').length === 3)
-    clientx.forget('foo')
-    expect(clientx.listeners('foo').length === 0)
-    expect(clientx.listeners('bar').length === 2)
-    clientx.clear()
-    expect(clientx.listeners('bar').length === 0)
-  })
-
   test('should error', async () => {
 
     wsrServer?.listen('no_return', (data) => { })
@@ -180,11 +163,11 @@ describe('cache service', () => {
 
   test('should error timeout', async () => {
 
-    const timeoutClient = new WebSocketer(wsclient, { timeout: 1 })
+    const timeoutClient = new WebSocketer(wsclient, { timeout: 2 })
     let timeoutId
     wsrServer?.listen('test_timeout', async () => {
       await new Promise(resolve => {
-        timeoutId = setTimeout(() => resolve(undefined), 2000)
+        timeoutId = setTimeout(() => resolve(undefined), 3000)
       })
     })
 
@@ -204,11 +187,9 @@ describe('cache service', () => {
     const server = wsrServer as any
     server.destroy()
     expect(server._requests.size).toBe(0)
-    expect(server._listeners.size).toBe(0)
     const client = wsrClient as any
     client.destroy()
     expect(client._requests.size).toBe(0)
-    expect(client._listeners.size).toBe(0)
     expect(wsrClient?.send('to_destroy')).rejects.toThrowError()
 
   })

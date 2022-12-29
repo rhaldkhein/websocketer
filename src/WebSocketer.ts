@@ -1,3 +1,4 @@
+import EventEmitter from 'eventemitter3'
 import { customAlphabet } from 'nanoid'
 import { Cluster } from './Cluster'
 
@@ -28,6 +29,10 @@ export interface RequestData<T = any> {
   nm: string
   /** request - is it a request or a response */
   rq: boolean
+  /** origin client id */
+  fr: string
+  /** destination client id */
+  to?: string
   /** error */
   er?: WebSocketerError
   /** payload */
@@ -42,6 +47,10 @@ export interface RequestData<T = any> {
   socket?: any
 }
 
+export interface RemoteEnd {
+  id: string
+}
+
 export interface Options {
   id: string
   namespace: string
@@ -49,6 +58,7 @@ export interface Options {
   errorFilter: (err: WebSocketerError) => WebSocketerError
   ping?: number
   cluster?: Cluster
+  debug?: boolean
 }
 
 export class WebSocketerError extends Error {
@@ -65,15 +75,16 @@ export class WebSocketerError extends Error {
 /**
  * WebSocketer class
  */
-export default class WebSocketer {
+export default class WebSocketer extends EventEmitter {
 
   private _options: Options
+  private _id: string
   private _socket: any
   private _requests = new Map<string, RequestData>()
-  private _listeners = new Map<string, Listener[]>()
   private _messageHandler: (e: any) => Promise<void>
   private _pingIntervalId: any
   private _cluster?: Cluster
+  private _remotes = new Map<string, RemoteEnd>()
 
   /**
    * Create a WebSocketer instance.
@@ -94,18 +105,23 @@ export default class WebSocketer {
     socket: any,
     options?: Partial<Options>) {
 
+    super()
     options = options || {} as Options
     options.errorFilter = options.errorFilter || (err => err)
     options.namespace = options.namespace || 'websocketer'
     options.timeout = options.timeout || 60
     options.ping = options.ping || 0
-    options.id = options.id || nanoid(24)
+    options.id = options.id || ''
 
     this._socket = socket
+    this._id = options.id
     this._cluster = options.cluster
     this._options = options as Options
     this.clear()
 
+    if (this._cluster) this._cluster.register(this)
+
+    // trigger interval pings
     if (options.ping) {
       this._pingIntervalId = setInterval(
         async () => {
@@ -119,6 +135,7 @@ export default class WebSocketer {
       )
     }
 
+    // listen to message event
     socket.addEventListener('message', this._messageHandler = async (e: any) => {
       let data: RequestData
       // parse data
@@ -127,7 +144,7 @@ export default class WebSocketer {
           typeof e.data === 'string' ? e.data : e.data.toString()
         )
       } catch (error) {
-        data = { ns: '', id: '', nm: '', rq: false }
+        data = { ns: '', id: '', nm: '', fr: '', rq: false }
       }
       // process data
       if (data.ns !== this._options.namespace) return
@@ -135,6 +152,16 @@ export default class WebSocketer {
       if (data.rq) await this._handleRequest(data)
       else this._handleResponse(data)
     })
+
+    // share client info to remote end
+    this._sendInfo()
+  }
+
+  /**
+   * Id of the WebSocketer instance.
+   */
+  get id() {
+    return this._id
   }
 
   /**
@@ -145,32 +172,74 @@ export default class WebSocketer {
   }
 
   /**
-   * Return all listeners of specific name
+   * Remote end client information.
    */
-  listeners(
-    name: string) {
+  get remotes() {
+    return this._remotes
+  }
 
-    return this._listeners.get(name) || []
+  /**
+   * Disconnect from socket and remove all listeners, requests, timeouts, and
+   * everything else.
+   */
+  destroy() {
+    this._cluster?.unregister(this)
+    this._socket?.removeEventListener('message', this._messageHandler)
+    this.clear()
+    this.removeAllListeners()
+    clearInterval(this._pingIntervalId)
+    // @ts-ignore
+    this._socket = null
+    // @ts-ignore
+    this._options = {}
+    // @ts-ignore
+    this._messageHandler = null
+    // @ts-ignore
+    this._cluster = null
+  }
+
+  /**
+   * Remove all listeners and requests.
+   */
+  clear() {
+    this._requests.forEach(data => clearTimeout(data.ti))
+    this._requests.clear()
+    this.removeAllListeners()
+    this.on('_ping_', (data) => data)
+    this.on('_remote_', (data: RemoteEnd) => {
+      if (!this._remotes.has(data.id)) {
+        this._remotes.set(data.id, data)
+        this.emit('@remote', data)
+        this._sendInfo()
+      }
+    })
+    this.on('_request_', (data: RequestData) => {
+      return this._handleRequest(data, { return: true })
+    })
   }
 
   /**
    * Send a request to the server and returns the reponse payload via Promise.
    *
    * @param name name
-   * @param payload payload
+   * @param payload payload object.
+   * default: `undefined`
+   * @param to destination client id to send to
+   * default: `undefined`
    * @returns Promise
    */
   async send<T>(
     name: string,
-    payload?: Payload) {
+    payload?: Payload,
+    to?: string) {
 
     return new Promise<T>((resolve, reject) => {
       try {
-        this._send(name, payload, (err, resPayload, request) => {
+        this._send(name, payload, to, (err, resPayload, request) => {
           if (err) {
             return reject(
               new WebSocketerError(
-                `${err.message} (${request.nm})`,
+                `${err.message}${this._options.debug ? ` -> ${request.nm}` : ''}`,
                 err.code,
                 err.payload,
                 'RemoteWebSocketerError'
@@ -201,12 +270,7 @@ export default class WebSocketer {
     name: string,
     listener: Listener<T>) {
 
-    let listeners = this._listeners.get(name)
-    if (!listeners) {
-      listeners = []
-      this._listeners.set(name, listeners)
-    }
-    listeners.push(listener)
+    this.on(name, listener)
   }
 
   /**
@@ -215,48 +279,27 @@ export default class WebSocketer {
   forget(
     name: string) {
 
-    this._listeners.delete(name)
+    this.off(name)
   }
 
-  /**
-   * Remove all listeners and requests.
-   */
-  clear() {
-    this._requests.forEach(data => clearTimeout(data.ti))
-    this._requests.clear()
-    this._listeners.clear()
-    this.listen('_ping_', (data) => data)
-  }
+  async handleRequest(
+    data: RequestData) {
 
-  /**
-   * Disconnect from socket and remove all listeners, requests, timeouts, and
-   * everything else.
-   */
-  destroy() {
-    this._socket?.removeEventListener('message', this._messageHandler)
-    this.clear()
-    this._listeners.clear()
-    clearInterval(this._pingIntervalId)
-    // @ts-ignore
-    this._options = {}
-    // @ts-ignore
-    this._messageHandler = null
-    // @ts-ignore
-    this._socket = null
-    // @ts-ignore
-    this._cluster = null
+    return this._handleRequest(data, { return: true })
   }
 
   /**
    * Internal send function using callback.
    *
    * @param name name
+   * @param to client id to send to
    * @param payload payload
    * @param response response callback
    */
   private _send(
     name: string,
     payload?: Payload,
+    to?: string,
     response?: ResponseHandler) {
 
     // build request object
@@ -265,7 +308,9 @@ export default class WebSocketer {
       id: nanoid(24),
       nm: name,
       rq: true,
-      pl: payload
+      pl: payload,
+      fr: this._id,
+      to
     }
     // tell server that we need a response
     if (response) request.rs = true
@@ -284,7 +329,7 @@ export default class WebSocketer {
         this._requests.delete(request.id)
         response(
           new WebSocketerError(
-            `Timeout reached for "${name}"`,
+            'Timeout reached',
             'ERR_WSR_TIMEOUT'
           ),
           undefined,
@@ -296,21 +341,28 @@ export default class WebSocketer {
   }
 
   private async _handleRequest(
-    data: RequestData) {
+    data: RequestData,
+    opt?: {
+      return?: boolean
+    }) {
 
-    // if we got cluster instance, then forward it
-    if (this._cluster) return this._handleRequestWithCluster(data)
-    // copy request data as reply data to avoid mutation and pollution
     let _payload
     let _error
-    data.socket = this._socket
     try {
+      // if we got destination id and cluster instance, then forward to cluster
+      if (data.to && this._cluster && !opt?.return) {
+        const reply = await this._cluster?.send(data)
+        this._socket.send(JSON.stringify(reply))
+        return
+      }
+      // copy request data as reply data to avoid mutation and pollution
+      data.socket = this._socket
       // get the listeners
-      const listeners = this._listeners.get(data.nm)
+      const listeners = this.listeners(data.nm)
       if (!listeners || !listeners.length) {
         // if no listeners, reply with error
         throw new WebSocketerError(
-          `No listener for "${data.nm}"`,
+          'No listener',
           'ERR_WSR_NO_LISTENER'
         )
       }
@@ -342,15 +394,13 @@ export default class WebSocketer {
       nm: data.nm,
       rq: false,
       pl: _payload,
-      er: _error
+      er: _error,
+      fr: this._id,
+      to: data.fr
     }
+    if (opt?.return) return replyData
     this._socket.send(JSON.stringify(replyData))
-  }
-
-  private async _handleRequestWithCluster(
-    data: RequestData) {
-
-    return this._cluster?.send(data)
+    return undefined
   }
 
   private _handleResponse(
@@ -371,6 +421,11 @@ export default class WebSocketer {
     this._requests.delete(request.id)
     clearTimeout(request.ti)
     request.ti = null
+  }
+
+  private _sendInfo() {
+    // do not send client info if on server side with cluster
+    if (!this._cluster) this.send('_remote_', { id: this._id })
   }
 
 }
