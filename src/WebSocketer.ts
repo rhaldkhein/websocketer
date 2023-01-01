@@ -149,8 +149,15 @@ export default class WebSocketer extends EventEmitter {
       // process data
       if (data.ns !== this._options.namespace) return
       // a request or a response?
-      if (data.rq) await this._handleRequest(data)
-      else this._handleResponse(data)
+      if (data.rq) {
+        // if got destination id and cluster instance, then forward to cluster
+        const reply = await ((data.to && this._cluster)
+          ? this._cluster?.send(data)
+          : this._handleRequest(data))
+        this._socket.send(JSON.stringify(reply))
+      } else {
+        this._handleResponse(data)
+      }
     })
 
     // share client info to remote end
@@ -214,7 +221,7 @@ export default class WebSocketer extends EventEmitter {
       }
     })
     this.on('_request_', (data: RequestData) => {
-      return this._handleRequest(data, { return: true })
+      return this._handleRequest(data)
     })
   }
 
@@ -285,7 +292,7 @@ export default class WebSocketer extends EventEmitter {
   async handleRequest(
     data: RequestData) {
 
-    return this._handleRequest(data, { return: true })
+    return this._handleRequest(data)
   }
 
   /**
@@ -341,20 +348,11 @@ export default class WebSocketer extends EventEmitter {
   }
 
   private async _handleRequest(
-    data: RequestData,
-    opt?: {
-      return?: boolean
-    }) {
+    data: RequestData) {
 
     let _payload
     let _error
     try {
-      // if we got destination id and cluster instance, then forward to cluster
-      if (data.to && this._cluster && !opt?.return) {
-        const reply = await this._cluster?.send(data)
-        this._socket.send(JSON.stringify(reply))
-        return
-      }
       // copy request data as reply data to avoid mutation and pollution
       data.socket = this._socket
       // get the listeners
@@ -393,9 +391,7 @@ export default class WebSocketer extends EventEmitter {
       fr: this._id,
       to: data.fr
     }
-    if (opt?.return) return replyData
-    this._socket.send(JSON.stringify(replyData))
-    return undefined
+    return replyData
   }
 
   private _handleResponse(
