@@ -27,9 +27,6 @@ describe('websocketer', () => {
   afterAll(async () => {
     wsrServer?.destroy()
     wsrClient?.destroy()
-    wsserver?.removeAllListeners()
-    wsclient?.removeAllListeners()
-    wss?.removeAllListeners()
     await new Promise(resolve => {
       wsserver?.on('close', () => {
         resolve(undefined)
@@ -48,6 +45,9 @@ describe('websocketer', () => {
       })
       wss?.close()
     })
+    wsserver?.removeAllListeners()
+    wsclient?.removeAllListeners()
+    wss?.removeAllListeners()
     wss = undefined
     wsserver = undefined
     wsclient = undefined

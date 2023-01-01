@@ -367,16 +367,11 @@ export default class WebSocketer extends EventEmitter {
         )
       }
       // trigger listeners
-      let result: any
       for (let i = 0; i < listeners.length; i++) {
-        const reply: any = listeners[i](data.pl, data)
-        if (reply !== undefined) {
-          result = reply instanceof Promise ? await reply : reply
-        }
+        _payload = await listeners[i](data.pl, data)
       }
-      // attach payload
-      _payload = result
     } catch (error: any) {
+      _payload = undefined
       // attach error
       _error = this._options.errorFilter(
         {

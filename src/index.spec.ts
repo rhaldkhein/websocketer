@@ -23,9 +23,6 @@ describe('index', () => {
   })
 
   afterAll(async () => {
-    wsserver?.removeAllListeners()
-    wsclient?.removeAllListeners()
-    wss?.removeAllListeners()
     await new Promise(resolve => {
       wsserver?.on('close', () => {
         resolve(undefined)
@@ -44,6 +41,9 @@ describe('index', () => {
       })
       wss?.close()
     })
+    wsserver?.removeAllListeners()
+    wsclient?.removeAllListeners()
+    wss?.removeAllListeners()
     wss = undefined
     wsserver = undefined
     wsclient = undefined
