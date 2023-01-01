@@ -82,6 +82,7 @@ export default class WebSocketer extends EventEmitter {
   private _socket: any
   private _requests = new Map<string, RequestData>()
   private _messageHandler: (e: any) => Promise<void>
+  private _openHandler: () => void = () => undefined
   private _pingIntervalId: any
   private _cluster?: Cluster
   private _remotes = new Map<string, RemoteEnd>()
@@ -111,7 +112,7 @@ export default class WebSocketer extends EventEmitter {
     options.namespace = options.namespace || 'websocketer'
     options.timeout = options.timeout || 60
     options.ping = options.ping || 0
-    options.id = options.id || ''
+    options.id = options.id || nanoid(24)
 
     this._socket = socket
     this._id = options.id
@@ -152,7 +153,7 @@ export default class WebSocketer extends EventEmitter {
       if (data.rq) {
         // if got destination id and cluster instance, then forward to cluster
         const reply = await ((data.to && this._cluster)
-          ? this._cluster?.send(data)
+          ? this._cluster?.handleRequest(data)
           : this._handleRequest(data))
         this._socket.send(JSON.stringify(reply))
       } else {
@@ -161,7 +162,13 @@ export default class WebSocketer extends EventEmitter {
     })
 
     // share client info to remote end
-    this._sendInfo()
+    if (socket.readyState === 1) {
+      this._sendInfo()
+    } else {
+      socket.addEventListener('open', this._openHandler = () => {
+        this._sendInfo()
+      })
+    }
   }
 
   /**
@@ -192,6 +199,7 @@ export default class WebSocketer extends EventEmitter {
   destroy() {
     this._cluster?.unregister(this)
     this._socket?.removeEventListener('message', this._messageHandler)
+    this._socket?.removeEventListener('open', this._openHandler)
     this.clear()
     this.removeAllListeners()
     clearInterval(this._pingIntervalId)
@@ -295,6 +303,31 @@ export default class WebSocketer extends EventEmitter {
     return this._handleRequest(data)
   }
 
+  endRequestData(
+    request: RequestData,
+    opt?: {
+      error?: any
+      payload?: any
+      from?: string
+      to?: string
+    }):
+    RequestData {
+
+    // do not change request data if it's already a response
+    if (!request.rq) return request
+    // update request data
+    return {
+      ns: request.ns,
+      id: request.id,
+      nm: request.nm,
+      rq: false,
+      pl: opt?.payload,
+      er: opt?.error,
+      fr: opt?.from || (request.rq ? request.to : request.fr) || '',
+      to: opt?.to || (request.rq ? request.fr : request.to) || ''
+    }
+  }
+
   /**
    * Internal send function using callback.
    *
@@ -321,6 +354,16 @@ export default class WebSocketer extends EventEmitter {
     }
     // tell server that we need a response
     if (response) request.rs = true
+    // socket must be open
+    if (this._socket.readyState !== 1) {
+      const error = new WebSocketerError(
+        'No connection',
+        'ERR_WSR_NO_CONNECTION'
+      )
+      if (response) response(error, undefined, request)
+      else throw error
+      return
+    }
     // send the request
     this._socket.send(JSON.stringify(request))
     // save the request in order to handle response
@@ -348,11 +391,11 @@ export default class WebSocketer extends EventEmitter {
   }
 
   private async _handleRequest(
-    data: RequestData) {
+    data: RequestData):
+    Promise<RequestData> {
 
-    let _payload
-    let _error
     try {
+      let payload
       // copy request data as reply data to avoid mutation and pollution
       data.socket = this._socket
       // get the listeners
@@ -366,32 +409,35 @@ export default class WebSocketer extends EventEmitter {
       }
       // trigger listeners
       for (let i = 0; i < listeners.length; i++) {
-        _payload = await listeners[i](data.pl, data)
+        payload = await listeners[i](data.pl, data)
       }
-    } catch (error: any) {
-      _payload = undefined
-      // attach error
-      _error = this._options.errorFilter(
+      // end request data
+      return this.endRequestData(
+        data,
         {
-          name: error.name,
-          code: error.code || 'ERR_WSR_INTERNAL',
-          message: error.message,
-          payload: error.payload
+          payload,
+          from: this._id,
+          to: data.fr
+        }
+      )
+    } catch (error: any) {
+      // attach any error and end request data
+      return this.endRequestData(
+        data,
+        {
+          error: this._options.errorFilter(
+            {
+              name: error.name,
+              code: error.code || 'ERR_WSR_INTERNAL',
+              message: error.message,
+              payload: error.payload
+            }
+          ),
+          from: this._id,
+          to: data.fr
         }
       )
     }
-    // dispatch data
-    const replyData: RequestData = {
-      ns: data.ns,
-      id: data.id,
-      nm: data.nm,
-      rq: false,
-      pl: _payload,
-      er: _error,
-      fr: this._id,
-      to: data.fr
-    }
-    return replyData
   }
 
   private _handleResponse(

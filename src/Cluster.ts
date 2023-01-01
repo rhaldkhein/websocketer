@@ -8,7 +8,7 @@ export interface ClusterOptions {
 export interface Cluster {
 
   destroy(): void
-  send<T>(request: RequestData): Promise<T>
+  handleRequest<T>(request: RequestData): Promise<RequestData<T>>
   register(socketer: WebSocketer): void
   unregister(socketer: WebSocketer): void
 
