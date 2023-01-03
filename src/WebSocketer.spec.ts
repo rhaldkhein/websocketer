@@ -28,18 +28,21 @@ describe('websocketer', () => {
     wsrServer?.destroy()
     wsrClient?.destroy()
     await new Promise(resolve => {
+      if (!wsserver) return resolve(undefined)
       wsserver?.on('close', () => {
         resolve(undefined)
       })
       wsserver?.close()
     })
     await new Promise(resolve => {
+      if (!wsclient) return resolve(undefined)
       wsclient?.on('close', () => {
         resolve(undefined)
       })
       wsclient?.close()
     })
     await new Promise(resolve => {
+      if (!wss) return resolve(undefined)
       wss?.on('close', () => {
         resolve(undefined)
       })
