@@ -120,7 +120,7 @@ export default class WebSocketer extends EventEmitter {
     this._options = options as Options
     this.clear()
 
-    if (this._cluster) this._cluster.register(this)
+    this._cluster?.register(this)
 
     // trigger interval pings
     if (options.ping) {
