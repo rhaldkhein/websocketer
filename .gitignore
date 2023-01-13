@@ -1,4 +1,5 @@
 build/
+*.rdb
 
 # Logs
 logs
