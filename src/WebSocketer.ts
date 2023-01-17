@@ -75,7 +75,7 @@ export class WebSocketerError extends Error {
 /**
  * WebSocketer class
  */
-export default class WebSocketer extends EventEmitter {
+export default class WebSocketer<T extends Cluster> extends EventEmitter {
 
   private _options: Options
   private _id: string
@@ -84,7 +84,7 @@ export default class WebSocketer extends EventEmitter {
   private _messageHandler: (e: any) => Promise<void>
   private _openHandler: () => void = () => undefined
   private _pingIntervalId: any
-  private _cluster?: Cluster
+  private _cluster?: T
   private _remotes = new Map<string, RemoteEnd>()
 
   /**
@@ -116,7 +116,7 @@ export default class WebSocketer extends EventEmitter {
 
     this._socket = socket
     this._id = options.id
-    this._cluster = options.cluster
+    this._cluster = options.cluster as T
     this._options = options as Options
     this.clear()
 
