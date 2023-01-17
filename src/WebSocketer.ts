@@ -75,7 +75,7 @@ export class WebSocketerError extends Error {
 /**
  * WebSocketer class
  */
-export default class WebSocketer<T extends Cluster> extends EventEmitter {
+export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
 
   private _options: Options
   private _id: string
