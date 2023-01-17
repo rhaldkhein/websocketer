@@ -1,6 +1,6 @@
 {
   "name": "websocketer",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Simple and easy message passing for WebSocket",
   "repository": {
     "type": "git",
