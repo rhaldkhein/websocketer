@@ -192,6 +192,10 @@ export default class WebSocketer extends EventEmitter {
     return this._remotes
   }
 
+  get cluster() {
+    return this._cluster
+  }
+
   /**
    * Disconnect from socket and remove all listeners, requests, timeouts, and
    * everything else.
