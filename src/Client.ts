@@ -251,10 +251,11 @@ export default abstract class Client<
     // a request or a response?
     if (data.rq) {
       // if got destination id and cluster instance, then forward to cluster
-      const reply = await ((data.to && data.to !== this._id && this._cluster)
-        ? this._cluster?.handleRequest(data)
-        : this.handleRequest(data))
-      this._send(reply)
+      if (data.to && data.to !== this._id && this._cluster) {
+        this._cluster?.handleRequest(data)
+      } else {
+        this._send(await this.handleRequest(data))
+      }
     } else {
       this.handleResponse(data)
     }

@@ -7,7 +7,7 @@ export interface ClusterOptions {
 export interface Cluster {
 
   destroy(): void
-  handleRequest<T>(request: RequestData): Promise<RequestData<T>>
+  handleRequest(request: RequestData): void
   register(client: Client): void
   unregister(client: Client): void
 

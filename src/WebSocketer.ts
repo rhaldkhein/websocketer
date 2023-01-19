@@ -14,7 +14,7 @@ export default class WebSocketer<
   extends Client<WebSocketerOptions, T1, T2> {
 
   private _pingIntervalId: any
-  private _messageHandler: (e: any) => Promise<void>
+  private _messageHandler: (e: any) => void = () => undefined
   private _openHandler: () => void = () => undefined
 
   constructor(
@@ -41,14 +41,14 @@ export default class WebSocketer<
     const client = this._client as any
     client.addEventListener(
       'message',
-      this._messageHandler = async (e: any) => {
+      this._messageHandler = (e: any) => {
         let data: RequestData
         try {
           data = JSON.parse(typeof e.data === 'string' ? e.data : e.data.toString())
         } catch (error) {
           data = { ns: '', id: '', nm: '', fr: '', rq: false }
         }
-        await this.handleMessage(data)
+        this.handleMessage(data)
       }
     )
 
