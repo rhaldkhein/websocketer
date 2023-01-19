@@ -1,6 +1,7 @@
 import WebSocketer, { Options } from './WebSocketer'
 export * from './WebSocketer'
 export * from './Cluster'
+export * from './utils/id'
 
 function createWebSocketer(
   socket: any,

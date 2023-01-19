@@ -1,9 +1,6 @@
 import EventEmitter from 'eventemitter3'
-import { customAlphabet } from 'nanoid'
 import { Cluster } from './Cluster'
-
-const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-const nanoid = customAlphabet(chars)
+import { generateId } from './utils/id'
 
 export type Payload = any
 
@@ -112,7 +109,7 @@ export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
     options.namespace = options.namespace || 'websocketer'
     options.timeout = options.timeout || 60
     options.ping = options.ping || 0
-    options.id = options.id || nanoid(24)
+    options.id = options.id || generateId(24)
 
     this._socket = socket
     this._id = options.id
@@ -349,7 +346,7 @@ export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
     // build request object
     const request: RequestData = {
       ns: this._options.namespace,
-      id: nanoid(24),
+      id: generateId(24),
       nm: name,
       rq: true,
       pl: payload,
