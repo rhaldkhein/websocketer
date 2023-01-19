@@ -1,4 +1,4 @@
-import type { RequestData, Client } from './WebSocketer'
+import Client, { RequestData } from './Client'
 
 export interface ClusterOptions {
   origin: string | string[]
@@ -8,7 +8,7 @@ export interface Cluster {
 
   destroy(): void
   handleRequest<T>(request: RequestData): Promise<RequestData<T>>
-  register(socketer: Client): void
-  unregister(socketer: Client): void
+  register(client: Client): void
+  unregister(client: Client): void
 
 }

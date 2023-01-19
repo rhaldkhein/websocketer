@@ -57,8 +57,8 @@ describe('index', () => {
     const wsrServer: WebSocketer = createWebSocketer(wsserver)
     const wsrClient: WebSocketer = createWebSocketer(wsclient)
 
-    wsrServer.listen('test_request', (data) => data)
-    const payload = await wsrClient.send('test_request', 1)
+    wsrServer.on('test_request', (data) => data)
+    const payload = await wsrClient.request('test_request', 1)
     expect(payload).toBe(1)
 
     wsrServer.destroy()
