@@ -70,8 +70,13 @@ export class WebSocketerError extends Error {
 }
 
 export interface Client {
+  readonly id: string
+  readonly remotes: Map<string, RemoteEnd>
+  destroy(): void
   handleRequest<T>(data: RequestData): Promise<RequestData<T>>
   send<T>(name: string, payload?: Payload, to?: string): Promise<T>
+  listen<T>(name: string, listener: Listener<T>): void
+  forget(name: string): void
 }
 
 /**
