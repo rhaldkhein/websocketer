@@ -177,7 +177,7 @@ export default abstract class Client<
       }
     })
     this.on('_request_', (data: RequestData) => {
-      return this.handleRequest(data)
+      return this.handleMessage(data)
     })
   }
 
