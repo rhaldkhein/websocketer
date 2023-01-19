@@ -251,12 +251,12 @@ export default abstract class Client<
     // a request or a response?
     if (data.rq) {
       // if got destination id and cluster instance, then forward to cluster
-      const reply = await ((data.to && this._cluster)
+      const reply = await ((data.to && data.to !== this._id && this._cluster)
         ? this._cluster?.handleRequest(data)
         : this.handleRequest(data))
       this._send(reply)
     } else {
-      this._handleResponse(data)
+      this.handleResponse(data)
     }
   }
 
@@ -308,6 +308,26 @@ export default abstract class Client<
         }
       )
     }
+  }
+
+  handleResponse(
+    data: RequestData) {
+
+    // get the request object
+    const request = this._requests.get(data.id)
+    if (!request) return
+    // handle the response data
+    if (typeof request.rs === 'function') {
+      request.rs(
+        data.er || null,
+        data.pl,
+        request
+      )
+    }
+    // delete the request and timeout because it's already handled
+    this._requests.delete(request.id)
+    clearTimeout(request.ti)
+    request.ti = null
   }
 
   protected abstract _send(
@@ -369,26 +389,6 @@ export default abstract class Client<
       },
       1000 * this._options.timeout
     )
-  }
-
-  private _handleResponse(
-    data: RequestData) {
-
-    // get the request object
-    const request = this._requests.get(data.id)
-    if (!request) return
-    // handle the response data
-    if (typeof request.rs === 'function') {
-      request.rs(
-        data.er || null,
-        data.pl,
-        request
-      )
-    }
-    // delete the request and timeout because it's already handled
-    this._requests.delete(request.id)
-    clearTimeout(request.ti)
-    request.ti = null
   }
 
 }
