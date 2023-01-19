@@ -69,10 +69,17 @@ export class WebSocketerError extends Error {
   }
 }
 
+export interface Client {
+  handleRequest<T>(data: RequestData): Promise<RequestData<T>>
+  send<T>(name: string, payload?: Payload, to?: string): Promise<T>
+}
+
 /**
  * WebSocketer class
  */
-export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
+export default class WebSocketer<T extends Cluster = any>
+  extends EventEmitter
+  implements Client {
 
   private _options: Options
   private _id: string
@@ -247,7 +254,8 @@ export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
   async send<T>(
     name: string,
     payload?: Payload,
-    to?: string) {
+    to?: string):
+    Promise<T> {
 
     return new Promise<T>((resolve, reject) => {
       try {
@@ -298,10 +306,10 @@ export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
     this.off(name)
   }
 
-  async handleRequest(
+  async handleRequest<T>(
     data: RequestData) {
 
-    return this._handleRequest(data)
+    return this._handleRequest<T>(data)
   }
 
   endRequestData(
@@ -391,9 +399,9 @@ export default class WebSocketer<T extends Cluster = any> extends EventEmitter {
     )
   }
 
-  private async _handleRequest(
+  private async _handleRequest<T>(
     data: RequestData):
-    Promise<RequestData> {
+    Promise<RequestData<T>> {
 
     try {
       let payload
