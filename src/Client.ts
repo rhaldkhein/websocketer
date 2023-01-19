@@ -254,7 +254,7 @@ export default abstract class Client<
       const reply = await ((data.to && this._cluster)
         ? this._cluster?.handleRequest(data)
         : this.handleRequest(data))
-      this._send(JSON.stringify(reply))
+      this._send(reply)
     } else {
       this._handleResponse(data)
     }
@@ -311,7 +311,7 @@ export default abstract class Client<
   }
 
   protected abstract _send(
-    message: string):
+    message: RequestData):
     void
 
   protected _sendInfo() {
@@ -346,7 +346,7 @@ export default abstract class Client<
     // tell server that we need a response
     if (response) request.rs = true
     // send the request
-    this._send(JSON.stringify(request))
+    this._send(request)
     // save the request in order to handle response
     if (!response) return
     // attach response function to request object

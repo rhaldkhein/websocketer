@@ -80,10 +80,10 @@ export default class WebSocketer<
   }
 
   protected _send(
-    message: string):
+    message: RequestData):
     void {
 
-    (this._client as any).send(message)
+    (this._client as any).send(JSON.stringify(message))
   }
 
 }
