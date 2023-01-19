@@ -41,14 +41,15 @@ export default class WebSocketer<
     const client = this._client as any
     client.addEventListener(
       'message',
-      this._messageHandler = (e: any) => {
+      this._messageHandler = async (e: any) => {
         let data: RequestData
         try {
           data = JSON.parse(typeof e.data === 'string' ? e.data : e.data.toString())
         } catch (error) {
           data = { ns: '', id: '', nm: '', fr: '', rq: false }
         }
-        this.handleMessage(data)
+        const replyData = await this.handleMessage(data)
+        if (replyData) this._send(replyData)
       }
     )
 

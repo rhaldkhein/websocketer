@@ -254,11 +254,12 @@ export default abstract class Client<
       if (data.to && data.to !== this._id && this._cluster) {
         this._cluster?.handleRequest(data)
       } else {
-        this._send(await this.handleRequest(data))
+        return await this.handleRequest(data)
       }
     } else {
       this.handleResponse(data)
     }
+    return undefined
   }
 
   async handleRequest<T>(
@@ -367,7 +368,11 @@ export default abstract class Client<
     // tell server that we need a response
     if (response) request.rs = true
     // send the request
-    this._send(request)
+    if (to && this._cluster) {
+      this.handleMessage(request)
+    } else {
+      this._send(request)
+    }
     // save the request in order to handle response
     if (!response) return
     // attach response function to request object
