@@ -68,6 +68,10 @@ export class WebSocketerError extends Error {
   }
 }
 
+export interface RequestManyOptions {
+  continue?: boolean
+}
+
 /**
  * A client class
  */
@@ -215,6 +219,22 @@ export default abstract class Client<
       } catch (error: any) {
         reject(new WebSocketerError(error.message))
       }
+    })
+  }
+
+  async requestMany(
+    name: string,
+    payload: Payload,
+    to: string[],
+    opt?: RequestManyOptions) {
+
+    const results = await Promise.allSettled(
+      to.map(id => this.request(name, payload, id))
+    )
+    return results.map(result => {
+      if (result.status === 'rejected' && !opt?.continue) throw result.reason
+      // @ts-ignore
+      return result.value
     })
   }
 
