@@ -68,8 +68,13 @@ export class WebSocketerError extends Error {
   }
 }
 
+export interface RequestOptions {
+  noReply?: boolean
+}
+
 export interface RequestManyOptions {
   continue?: boolean
+  noReply?: boolean
 }
 
 /**
@@ -198,24 +203,30 @@ export default abstract class Client<
   async request<T>(
     name: string,
     payload?: Payload,
-    to?: string):
+    to?: string,
+    opt?: RequestOptions):
     Promise<T> {
 
     return new Promise<T>((resolve, reject) => {
       try {
-        this._request(name, payload, to, (err, resPayload, request) => {
-          if (err) {
-            return reject(
-              new WebSocketerError(
-                `${err.message}${this._options.debug ? ` -> ${request.nm}` : ''}`,
-                err.code,
-                err.payload,
-                'RemoteWebSocketerError'
+        if (opt?.noReply) {
+          this._request(name, payload, to)
+          resolve(undefined as T)
+        } else {
+          this._request(name, payload, to, (err, resPayload, request) => {
+            if (err) {
+              return reject(
+                new WebSocketerError(
+                  `${err.message}${this._options.debug ? ` -> ${request.nm}` : ''}`,
+                  err.code,
+                  err.payload,
+                  'RemoteWebSocketerError'
+                )
               )
-            )
-          }
-          resolve(resPayload)
-        })
+            }
+            resolve(resPayload)
+          })
+        }
       } catch (error: any) {
         reject(new WebSocketerError(error.message))
       }
@@ -229,7 +240,7 @@ export default abstract class Client<
     opt?: RequestManyOptions) {
 
     const results = await Promise.allSettled(
-      to.map(id => this.request(name, payload, id))
+      to.map(id => this.request(name, payload, id, { noReply: opt?.noReply }))
     )
     return results.map(result => {
       if (result.status === 'rejected' && !opt?.continue) throw result.reason
@@ -274,7 +285,7 @@ export default abstract class Client<
       if (data.to && data.to !== this._id && this._cluster) {
         this._cluster?.handleRequest(data)
       } else {
-        return await this.handleRequest(data)
+        return this.handleRequest(data)
       }
     } else {
       this.handleResponse(data)
