@@ -38,6 +38,8 @@ export interface RequestData<T = any> {
   rs?: true | ResponseHandler
   /** timeout id */
   ti?: any
+  /** is forwarded to cluster */
+  ic?: boolean
   /** local data space */
   locals?: Record<string, any>
   /** attached client */
@@ -274,6 +276,9 @@ export default abstract class Client<
     }
   }
 
+  /**
+   * This method handles a message from client itself or from cluster.
+   */
   async handleMessage(
     data: RequestData) {
 
@@ -282,7 +287,8 @@ export default abstract class Client<
     // a request or a response?
     if (data.rq) {
       // if got destination id and cluster instance, then forward to cluster
-      if (data.to && data.to !== this._id && this._cluster) {
+      if (this._cluster && !data.ic && data.to) {
+        data.ic = true
         this._cluster?.handleRequest(data)
       } else {
         return this.handleRequest(data)
