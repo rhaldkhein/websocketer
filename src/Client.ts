@@ -220,31 +220,7 @@ export default abstract class Client<
       if (!reply) throw new WebSocketerError('No response', 'NO_RESPONSE')
       return reply
     }
-
-    return new Promise<T>((resolve, reject) => {
-      try {
-        if (opt?.noReply) {
-          this._request(name, payload)
-          resolve(undefined as T)
-        } else {
-          this._request(name, payload, undefined, (err, resPayload, request) => {
-            if (err) {
-              return reject(
-                new WebSocketerError(
-                  `${err.message}${this._options.debug ? ` -> ${request.nm}` : ''}`,
-                  err.code,
-                  err.payload,
-                  'RemoteWebSocketerError'
-                )
-              )
-            }
-            resolve(resPayload)
-          })
-        }
-      } catch (error: any) {
-        reject(new WebSocketerError(error.message))
-      }
-    })
+    return this._request(name, payload, to, opt)
   }
 
   async requestMany(
@@ -254,7 +230,7 @@ export default abstract class Client<
     opt?: RequestManyOptions) {
 
     const results = await Promise.allSettled(
-      to.map(id => this.request(name, payload, id, { noReply: opt?.noReply }))
+      to.map(id => this._request(name, payload, id, { noReply: opt?.noReply }))
     )
     return results.map(result => {
       if (result.status === 'rejected') {
@@ -399,6 +375,39 @@ export default abstract class Client<
     if (!this._cluster) this.request('_remote_', { id: this._id })
   }
 
+  private async _request<T>(
+    name: string,
+    payload?: Payload,
+    to?: string,
+    opt?: RequestOptions):
+    Promise<T> {
+
+    return new Promise<T>((resolve, reject) => {
+      try {
+        if (opt?.noReply) {
+          this._dispatch(name, payload, to)
+          resolve(undefined as T)
+        } else {
+          this._dispatch(name, payload, to, (err, resPayload, request) => {
+            if (err) {
+              return reject(
+                new WebSocketerError(
+                  `${err.message}${this._options.debug ? ` -> ${request.nm}` : ''}`,
+                  err.code,
+                  err.payload,
+                  'RemoteWebSocketerError'
+                )
+              )
+            }
+            resolve(resPayload)
+          })
+        }
+      } catch (error: any) {
+        reject(new WebSocketerError(error.message))
+      }
+    })
+  }
+
   /**
    * Internal send function using callback.
    *
@@ -407,7 +416,7 @@ export default abstract class Client<
    * @param payload payload
    * @param response response callback
    */
-  private _request(
+  private _dispatch(
     name: string,
     payload?: Payload,
     to?: string,
