@@ -217,7 +217,7 @@ export default abstract class Client<
       const reply = replies.find((v: any) => {
         return v && v.name !== this._options.namespace + '_error'
       })
-      if (!reply) throw new WebSocketerError('No response', 'NO_RESPONSE')
+      if (!reply) throw new WebSocketerError('No response', 'ERR_WSR_NO_RESPONSE')
       return reply
     }
     return this._request(name, payload, to, opt)
