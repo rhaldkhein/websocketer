@@ -209,13 +209,25 @@ export default abstract class Client<
     opt?: RequestOptions):
     Promise<T> {
 
+    if (to) {
+      const replies = await this.requestMany(name, payload, [to], {
+        noReply: opt?.noReply,
+        continue: true
+      }) as T[]
+      const reply = replies.find((v: any) => {
+        return v && v.name !== this._options.namespace + '_error'
+      })
+      if (!reply) throw new WebSocketerError('No response', 'NO_RESPONSE')
+      return reply
+    }
+
     return new Promise<T>((resolve, reject) => {
       try {
         if (opt?.noReply) {
-          this._request(name, payload, to)
+          this._request(name, payload)
           resolve(undefined as T)
         } else {
-          this._request(name, payload, to, (err, resPayload, request) => {
+          this._request(name, payload, undefined, (err, resPayload, request) => {
             if (err) {
               return reject(
                 new WebSocketerError(
@@ -245,7 +257,16 @@ export default abstract class Client<
       to.map(id => this.request(name, payload, id, { noReply: opt?.noReply }))
     )
     return results.map(result => {
-      if (result.status === 'rejected' && !opt?.continue) throw result.reason
+      if (result.status === 'rejected') {
+        if (!opt?.continue) {
+          throw result.reason
+        } else {
+          return {
+            name: this._options.namespace + '_error',
+            error: result.reason
+          }
+        }
+      }
       // @ts-ignore
       return result.value
     })
